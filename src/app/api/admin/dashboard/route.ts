@@ -1,13 +1,19 @@
-import { NextResponse } from "next/server";
+import {
+  NextResponse,
+} from "next/server";
 
-import { adminDb } from "@/lib/firebase/admin";
+import {
+  getAdminDb,
+} from "@/lib/firebase/admin";
+
 import {
   authErrorResponse,
   requireAdmin,
 } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const dynamic =
+  "force-dynamic";
 
 type DashboardEnquiry = {
   id: string;
@@ -24,12 +30,13 @@ function serializeTimestamp(
 ): string | null {
   if (
     value &&
-    typeof value === "object" &&
-    "toDate" in value
+    typeof value ===
+      "object"
   ) {
     const timestamp =
       value as {
         toDate?: () => Date;
+        toMillis?: () => number;
       };
 
     if (
@@ -40,17 +47,6 @@ function serializeTimestamp(
         .toDate()
         .toISOString();
     }
-  }
-
-  if (
-    value &&
-    typeof value === "object" &&
-    "toMillis" in value
-  ) {
-    const timestamp =
-      value as {
-        toMillis?: () => number;
-      };
 
     if (
       typeof timestamp.toMillis ===
@@ -63,7 +59,8 @@ function serializeTimestamp(
   }
 
   if (
-    typeof value === "string"
+    typeof value ===
+    "string"
   ) {
     return value;
   }
@@ -76,44 +73,44 @@ export async function GET(
 ) {
   try {
     /*
-     * Verify Firebase authenticated
-     * administrator.
+     * Verify Firebase ID token
+     * and admin email.
      */
-    await requireAdmin(request);
+    await requireAdmin(
+      request,
+    );
 
-    /*
-     * Read Firestore collections.
-     */
+    const db =
+      getAdminDb();
+
     const [
       enquiriesSnapshot,
       customersSnapshot,
       bookingsSnapshot,
     ] = await Promise.all([
-      adminDb
+      db
         .collection("enquiries")
         .get(),
 
-      adminDb
+      db
         .collection("customers")
         .get(),
 
-      adminDb
+      db
         .collection("bookings")
         .get(),
     ]);
 
-    /*
-     * Convert Firestore data into
-     * JSON-safe objects.
-     */
-    const enquiries: DashboardEnquiry[] =
+    const enquiries:
+      DashboardEnquiry[] =
       enquiriesSnapshot.docs.map(
         (doc) => {
           const data =
             doc.data();
 
           return {
-            id: doc.id,
+            id:
+              doc.id,
 
             fullName:
               typeof data.fullName ===
@@ -153,42 +150,38 @@ export async function GET(
         },
       );
 
-    /*
-     * Most recent enquiries.
-     */
     const recentEnquiries =
       [...enquiries]
-        .sort((a, b) => {
-          const aTime =
-            a.createdAt
-              ? new Date(
-                  a.createdAt,
-                ).getTime()
-              : 0;
+        .sort(
+          (a, b) => {
+            const aTime =
+              a.createdAt
+                ? new Date(
+                    a.createdAt,
+                  ).getTime()
+                : 0;
 
-          const bTime =
-            b.createdAt
-              ? new Date(
-                  b.createdAt,
-                ).getTime()
-              : 0;
+            const bTime =
+              b.createdAt
+                ? new Date(
+                    b.createdAt,
+                  ).getTime()
+                : 0;
 
-          return bTime - aTime;
-        })
+            return (
+              bTime - aTime
+            );
+          },
+        )
         .slice(0, 8);
 
-    /*
-     * New enquiries.
-     */
     const newEnquiries =
       enquiries.filter(
         (item) =>
-          item.status === "NEW",
+          item.status ===
+          "NEW",
       ).length;
 
-    /*
-     * Pending bookings.
-     */
     const pendingBookings =
       bookingsSnapshot.docs.filter(
         (doc) => {
@@ -204,9 +197,6 @@ export async function GET(
         },
       ).length;
 
-    /*
-     * Completed bookings.
-     */
     const completedBookings =
       bookingsSnapshot.docs.filter(
         (doc) =>
@@ -214,9 +204,6 @@ export async function GET(
           "COMPLETED",
       ).length;
 
-    /*
-     * Always return valid JSON.
-     */
     return NextResponse.json(
       {
         success: true,
@@ -250,9 +237,6 @@ export async function GET(
       error,
     );
 
-    /*
-     * Authentication errors.
-     */
     if (
       error instanceof Error &&
       (
@@ -267,22 +251,17 @@ export async function GET(
       );
     }
 
-    /*
-     * IMPORTANT:
-     * Return the actual server error
-     * as JSON instead of an empty 500.
-     */
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unable to load dashboard.";
-
     return NextResponse.json(
       {
         success: false,
+
         message:
           "Unable to load admin dashboard.",
-        error: message,
+
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
       },
       {
         status: 500,

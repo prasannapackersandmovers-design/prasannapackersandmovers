@@ -1,14 +1,23 @@
-import { NextResponse } from "next/server";
+﻿import {
+  NextResponse,
+} from "next/server";
+
 import {
   FieldValue,
 } from "firebase-admin/firestore";
 
-import { adminDb } from "@/lib/firebase/admin";
+import {
+  getAdminDb,
+} from "@/lib/firebase/admin";
 
 import {
   authErrorResponse,
   requireAdmin,
 } from "@/lib/admin-auth";
+
+export const runtime = "nodejs";
+export const dynamic =
+  "force-dynamic";
 
 function serialize(
   id: string,
@@ -16,20 +25,27 @@ function serialize(
 ) {
   return {
     id,
+
     ...data,
 
     createdAt:
-      data.createdAt?.toDate?.()?.toISOString() ??
+      data.createdAt
+        ?.toDate?.()
+        ?.toISOString() ??
       data.createdAt ??
       null,
 
     updatedAt:
-      data.updatedAt?.toDate?.()?.toISOString() ??
+      data.updatedAt
+        ?.toDate?.()
+        ?.toISOString() ??
       data.updatedAt ??
       null,
 
     contactedAt:
-      data.contactedAt?.toDate?.()?.toISOString() ??
+      data.contactedAt
+        ?.toDate?.()
+        ?.toISOString() ??
       data.contactedAt ??
       null,
   };
@@ -37,17 +53,20 @@ function serialize(
 
 /**
  * GET /api/admin/enquiries
- *
- * Returns the latest enquiries for the admin dashboard.
  */
 export async function GET(
   request: Request,
 ) {
   try {
-    await requireAdmin(request);
+    await requireAdmin(
+      request,
+    );
+
+    const db =
+      getAdminDb();
 
     const snapshot =
-      await adminDb
+      await db
         .collection("enquiries")
         .orderBy(
           "createdAt",
@@ -57,52 +76,132 @@ export async function GET(
         .get();
 
     const enquiries =
-      snapshot.docs.map((doc) =>
-        serialize(
-          doc.id,
-          doc.data(),
-        ),
+      snapshot.docs.map(
+        (doc) =>
+          serialize(
+            doc.id,
+            doc.data(),
+          ),
       );
 
-    return NextResponse.json({
-      success: true,
-      enquiries,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        enquiries,
+      },
+      {
+        status: 200,
+      },
+    );
   } catch (error) {
     console.error(
       "GET /api/admin/enquiries error:",
       error,
     );
 
-    return authErrorResponse(error);
+    if (
+      error instanceof Error &&
+      (
+        error.message ===
+          "UNAUTHORIZED" ||
+        error.message ===
+          "FORBIDDEN"
+      )
+    ) {
+      return authErrorResponse(
+        error,
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Unable to load enquiries.",
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }
 
 /**
  * POST /api/admin/enquiries
- *
- * Allows an admin to manually create an enquiry.
  */
 export async function POST(
   request: Request,
 ) {
   try {
-    await requireAdmin(request);
+    await requireAdmin(
+      request,
+    );
 
-    const body =
-      await request.json();
+    let body: Record<
+      string,
+      unknown
+    >;
 
-    const {
-      fullName,
-      phone,
-      email,
-      serviceType,
-      pickupLocation,
-      dropLocation,
-      movingDate,
-      additionalRequirements,
-      customerId,
-    } = body;
+    try {
+      body =
+        await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Invalid JSON request.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    const fullName =
+      String(
+        body.fullName ?? "",
+      ).trim();
+
+    const phone =
+      String(
+        body.phone ?? "",
+      ).trim();
+
+    const email =
+      String(
+        body.email ?? "",
+      ).trim();
+
+    const serviceType =
+      String(
+        body.serviceType ?? "",
+      ).trim();
+
+    const pickupLocation =
+      String(
+        body.pickupLocation ?? "",
+      ).trim();
+
+    const dropLocation =
+      String(
+        body.dropLocation ?? "",
+      ).trim();
+
+    const movingDate =
+      String(
+        body.movingDate ?? "",
+      ).trim();
+
+    const additionalRequirements =
+      String(
+        body.additionalRequirements ??
+          "",
+      ).trim();
 
     if (
       !fullName ||
@@ -124,8 +223,11 @@ export async function POST(
       );
     }
 
+    const db =
+      getAdminDb();
+
     const enquiryRef =
-      adminDb
+      db
         .collection("enquiries")
         .doc();
 
@@ -134,60 +236,52 @@ export async function POST(
 
     await enquiryRef.set({
       customerId:
-        customerId || "",
-
-      fullName:
-        String(fullName).trim(),
-
-      phone:
-        String(phone).trim(),
-
-      email:
-        email
-          ? String(email).trim()
-          : "",
-
-      serviceType:
-        String(serviceType).trim(),
-
-      pickupLocation:
         String(
-          pickupLocation,
-        ).trim(),
+          body.customerId ?? "",
+        ),
 
-      dropLocation:
-        String(
-          dropLocation,
-        ).trim(),
+      fullName,
 
-      movingDate:
-        String(movingDate).trim(),
+      phone,
 
-      additionalRequirements:
-        additionalRequirements
-          ? String(
-              additionalRequirements,
-            ).trim()
-          : "",
+      email,
 
-      status: "NEW",
+      serviceType,
 
-      source: "ADMIN",
+      pickupLocation,
 
-      assignedTo: "",
+      dropLocation,
 
-      adminNotes: "",
+      movingDate,
 
-      createdAt: now,
+      additionalRequirements,
 
-      updatedAt: now,
+      status:
+        "NEW",
+
+      source:
+        "ADMIN",
+
+      assignedTo:
+        "",
+
+      adminNotes:
+        "",
+
+      createdAt:
+        now,
+
+      updatedAt:
+        now,
     });
 
     return NextResponse.json(
       {
         success: true,
+
         message:
           "Enquiry created successfully.",
+
         enquiryId:
           enquiryRef.id,
       },
@@ -201,6 +295,33 @@ export async function POST(
       error,
     );
 
-    return authErrorResponse(error);
+    if (
+      error instanceof Error &&
+      (
+        error.message ===
+          "UNAUTHORIZED" ||
+        error.message ===
+          "FORBIDDEN"
+      )
+    ) {
+      return authErrorResponse(
+        error,
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Unable to create enquiry.",
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }

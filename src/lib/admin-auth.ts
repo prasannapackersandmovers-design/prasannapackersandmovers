@@ -1,4 +1,4 @@
-import { adminAuth } from "@/lib/firebase/admin";
+import { getAdminAuth } from "@/lib/firebase/admin";
 
 export interface AuthenticatedAdmin {
   uid: string;
@@ -14,7 +14,9 @@ function getAllowedAdminEmails(): string[] {
 
   return configured
     .split(",")
-    .map((email) => email.trim().toLowerCase())
+    .map((email) =>
+      email.trim().toLowerCase(),
+    )
     .filter(Boolean);
 }
 
@@ -22,13 +24,23 @@ export async function requireAdmin(
   request: Request,
 ): Promise<AuthenticatedAdmin> {
   const authorization =
-    request.headers.get("authorization");
+    request.headers.get(
+      "authorization",
+    );
 
-  if (!authorization?.startsWith("Bearer ")) {
+  if (
+    !authorization ||
+    !authorization.startsWith(
+      "Bearer ",
+    )
+  ) {
     throw new Error("UNAUTHORIZED");
   }
 
-  const token = authorization.slice(7).trim();
+  const token =
+    authorization
+      .slice(7)
+      .trim();
 
   if (!token) {
     throw new Error("UNAUTHORIZED");
@@ -38,14 +50,17 @@ export async function requireAdmin(
 
   try {
     decodedToken =
-      await adminAuth.verifyIdToken(token);
+      await getAdminAuth()
+        .verifyIdToken(token);
   } catch (error) {
     console.error(
       "Admin token verification failed:",
       error,
     );
 
-    throw new Error("UNAUTHORIZED");
+    throw new Error(
+      "UNAUTHORIZED",
+    );
   }
 
   const allowedEmails =
@@ -59,14 +74,26 @@ export async function requireAdmin(
   if (
     allowedEmails.length === 0 ||
     !email ||
-    !allowedEmails.includes(email)
+    !allowedEmails.includes(
+      email,
+    )
   ) {
-    throw new Error("FORBIDDEN");
+    console.error(
+      "Admin email is not authorized:",
+      email,
+    );
+
+    throw new Error(
+      "FORBIDDEN",
+    );
   }
 
   return {
     uid: decodedToken.uid,
-    email: decodedToken.email,
+
+    email:
+      decodedToken.email,
+
     name:
       decodedToken.name ??
       decodedToken.email ??
@@ -82,7 +109,9 @@ export function authErrorResponse(
       ? error.message
       : "UNAUTHORIZED";
 
-  if (message === "FORBIDDEN") {
+  if (
+    message === "FORBIDDEN"
+  ) {
     return Response.json(
       {
         success: false,

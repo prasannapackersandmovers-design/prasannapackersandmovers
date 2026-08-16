@@ -37,10 +37,10 @@ function getFirebaseAdminApp(): App {
   }
 
   const projectId =
-    process.env.FIREBASE_PROJECT_ID;
+    process.env.FIREBASE_PROJECT_ID?.trim();
 
   const clientEmail =
-    process.env.FIREBASE_CLIENT_EMAIL;
+    process.env.FIREBASE_CLIENT_EMAIL?.trim();
 
   const privateKey =
     process.env.FIREBASE_PRIVATE_KEY;
@@ -74,11 +74,16 @@ function getFirebaseAdminApp(): App {
       normalizedPrivateKey.slice(1, -1);
   }
 
+  /*
+   * Vercel environment variables may contain
+   * literal \n characters.
+   *
+   * Convert them into real newlines.
+   */
   normalizedPrivateKey =
-    normalizedPrivateKey.replace(
-      /\\n/g,
-      "\n",
-    );
+    normalizedPrivateKey
+      .split("\\n")
+      .join("\n");
 
   if (
     !normalizedPrivateKey.includes(
@@ -97,10 +102,10 @@ function getFirebaseAdminApp(): App {
     initializeApp({
       credential: cert({
         projectId:
-          projectId.trim(),
+          projectId,
 
         clientEmail:
-          clientEmail.trim(),
+          clientEmail,
 
         privateKey:
           normalizedPrivateKey,
@@ -115,18 +120,44 @@ function getFirebaseAdminApp(): App {
 }
 
 /**
- * Lazy Firebase Admin Firestore.
+ * Firebase Admin Firestore
+ */
+export function getAdminDb(): Firestore {
+  return getFirestore(
+    getFirebaseAdminApp(),
+  );
+}
+
+/**
+ * Firebase Admin Auth
+ */
+export function getAdminAuth(): Auth {
+  return getAuth(
+    getFirebaseAdminApp(),
+  );
+}
+
+/**
+ * Firebase Admin Storage
+ */
+export function getAdminStorage(): Storage {
+  return getStorage(
+    getFirebaseAdminApp(),
+  );
+}
+
+/**
+ * Backward-compatible lazy Firestore export.
  *
- * Firebase is initialized only when
- * Firestore is actually accessed.
+ * Existing API files can use:
+ *
+ * import { adminDb } from "@/lib/firebase/admin";
  */
 export const adminDb =
   new Proxy({} as Firestore, {
     get(_target, property) {
       const db =
-        getFirestore(
-          getFirebaseAdminApp(),
-        );
+        getAdminDb();
 
       const value =
         Reflect.get(
@@ -147,15 +178,13 @@ export const adminDb =
   });
 
 /**
- * Lazy Firebase Admin Auth.
+ * Backward-compatible lazy Auth export.
  */
 export const adminAuth =
   new Proxy({} as Auth, {
     get(_target, property) {
       const auth =
-        getAuth(
-          getFirebaseAdminApp(),
-        );
+        getAdminAuth();
 
       const value =
         Reflect.get(
@@ -176,15 +205,13 @@ export const adminAuth =
   });
 
 /**
- * Lazy Firebase Admin Storage.
+ * Backward-compatible lazy Storage export.
  */
 export const adminStorage =
   new Proxy({} as Storage, {
     get(_target, property) {
       const storage =
-        getStorage(
-          getFirebaseAdminApp(),
-        );
+        getAdminStorage();
 
       const value =
         Reflect.get(

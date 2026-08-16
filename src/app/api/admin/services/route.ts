@@ -1,6 +1,10 @@
-import { NextResponse } from "next/server";
+﻿import {
+  NextResponse,
+} from "next/server";
 
-import { adminDb } from "@/lib/firebase/admin";
+import {
+  adminDb,
+} from "@/lib/firebase/admin";
 
 const defaultServices = [
   {
@@ -61,56 +65,90 @@ const defaultServices = [
   },
 ];
 
+export const runtime = "nodejs";
+export const dynamic =
+  "force-dynamic";
+
 export async function GET() {
   try {
-    const snapshot = await adminDb
-      .collection("services")
-      .get();
+    const snapshot =
+      await adminDb
+        .collection("services")
+        .get();
 
     if (snapshot.empty) {
-      const batch = adminDb.batch();
+      const batch =
+        adminDb.batch();
 
-      for (const service of defaultServices) {
-        const reference = adminDb
-          .collection("services")
-          .doc(service.id);
+      for (
+        const service of
+        defaultServices
+      ) {
+        const reference =
+          adminDb
+            .collection(
+              "services",
+            )
+            .doc(
+              service.id,
+            );
 
-        batch.set(reference, {
-          ...service,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+        batch.set(
+          reference,
+          {
+            ...service,
+            createdAt:
+              new Date(),
+            updatedAt:
+              new Date(),
+          },
+        );
       }
 
       await batch.commit();
 
-      return NextResponse.json({
-        success: true,
-        services: defaultServices,
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          services:
+            defaultServices,
+        },
+      );
     }
 
-    const services = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const services =
+      snapshot.docs.map(
+        (doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }),
+      );
 
-    return NextResponse.json({
-      success: true,
-      services,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        services,
+      },
+    );
   } catch (error) {
     console.error(
       "Services API error:",
-      error
+      error,
     );
 
     return NextResponse.json(
       {
         success: false,
-        message: "Unable to load services.",
+        message:
+          "Unable to load services.",
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
       },
-      { status: 500 }
+      {
+        status: 500,
+      },
     );
   }
 }

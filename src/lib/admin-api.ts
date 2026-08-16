@@ -6,7 +6,8 @@ export async function adminFetch(
   url: string,
   options: RequestInit = {},
 ): Promise<Response> {
-  const user = auth.currentUser;
+  const user =
+    auth.currentUser;
 
   if (!user) {
     throw new Error(
@@ -14,11 +15,13 @@ export async function adminFetch(
     );
   }
 
-  const token = await user.getIdToken(true);
+  const token =
+    await user.getIdToken(true);
 
-  const headers = new Headers(
-    options.headers,
-  );
+  const headers =
+    new Headers(
+      options.headers,
+    );
 
   headers.set(
     "Authorization",
@@ -27,7 +30,9 @@ export async function adminFetch(
 
   if (
     options.body &&
-    !headers.has("Content-Type")
+    !headers.has(
+      "Content-Type",
+    )
   ) {
     headers.set(
       "Content-Type",
@@ -35,30 +40,31 @@ export async function adminFetch(
     );
   }
 
-  return fetch(url, {
-    ...options,
-    headers,
-    cache: "no-store",
-  });
+  headers.set(
+    "Accept",
+    "application/json",
+  );
+
+  return fetch(
+    url,
+    {
+      ...options,
+      headers,
+      cache: "no-store",
+    },
+  );
 }
 
 export async function adminJson<T>(
   url: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const response = await adminFetch(
-    url,
-    options,
-  );
+  const response =
+    await adminFetch(
+      url,
+      options,
+    );
 
-  /*
-   * Read the response as text first.
-   *
-   * This prevents:
-   * Unexpected end of JSON input
-   *
-   * when the server returns an empty response.
-   */
   const text =
     await response.text();
 
@@ -71,11 +77,13 @@ export async function adminJson<T>(
   let data: {
     success?: boolean;
     message?: string;
+    error?: string;
     [key: string]: unknown;
   };
 
   try {
-    data = JSON.parse(text);
+    data =
+      JSON.parse(text);
   } catch {
     throw new Error(
       `Server returned invalid JSON (${response.status}).`,
@@ -87,9 +95,13 @@ export async function adminJson<T>(
     data.success === false
   ) {
     throw new Error(
-      typeof data.message === "string"
+      typeof data.message ===
+        "string"
         ? data.message
-        : `The server request failed (${response.status}).`,
+        : typeof data.error ===
+            "string"
+          ? data.error
+          : `The server request failed (${response.status}).`,
     );
   }
 

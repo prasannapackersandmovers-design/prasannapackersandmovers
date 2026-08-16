@@ -1,148 +1,48 @@
-import { NextResponse } from "next/server";
 import {
-  cert,
-  getApps,
-  initializeApp,
-} from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
-import { FieldValue } from "firebase-admin/firestore";
+  NextResponse,
+} from "next/server";
 
-import { enquirySchema } from "@/lib/validations";
+import {
+  FieldValue,
+} from "firebase-admin/firestore";
+
+import {
+  getAdminDb,
+} from "@/lib/firebase/admin";
+
+import {
+  enquirySchema,
+} from "@/lib/validations";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const dynamic =
+  "force-dynamic";
 
-/**
- * Get Firebase Admin Firestore for this request.
- *
- * Firebase is initialized inside the request handler,
- * so configuration errors can be caught and returned
- * as JSON instead of causing an empty 500 response.
- */
-function getFirestoreAdmin() {
-  const existingApps = getApps();
-
-  if (existingApps.length > 0) {
-    return getFirestore(existingApps[0]);
-  }
-
-  const projectId =
-    process.env.FIREBASE_PROJECT_ID;
-
-  const clientEmail =
-    process.env.FIREBASE_CLIENT_EMAIL;
-
-  const privateKey =
-    process.env.FIREBASE_PRIVATE_KEY;
-
-  if (!projectId) {
-    throw new Error(
-      "Missing FIREBASE_PROJECT_ID in Vercel environment variables.",
-    );
-  }
-
-  if (!clientEmail) {
-    throw new Error(
-      "Missing FIREBASE_CLIENT_EMAIL in Vercel environment variables.",
-    );
-  }
-
-  if (!privateKey) {
-    throw new Error(
-      "Missing FIREBASE_PRIVATE_KEY in Vercel environment variables.",
-    );
-  }
-
-  let normalizedPrivateKey =
-    privateKey.trim();
-
-  /*
-   * Remove surrounding quotes if they were
-   * accidentally included in the Vercel value.
-   */
-  if (
-    normalizedPrivateKey.startsWith('"') &&
-    normalizedPrivateKey.endsWith('"')
-  ) {
-    normalizedPrivateKey =
-      normalizedPrivateKey.slice(1, -1);
-  }
-
-  /*
-   * Convert literal \\n into real newlines.
-   */
-  normalizedPrivateKey =
-    normalizedPrivateKey.replace(
-      /\\n/g,
-      "\n",
-    );
-
-  if (
-    !normalizedPrivateKey.includes(
-      "-----BEGIN PRIVATE KEY-----",
-    ) ||
-    !normalizedPrivateKey.includes(
-      "-----END PRIVATE KEY-----",
-    )
-  ) {
-    throw new Error(
-      "FIREBASE_PRIVATE_KEY format is invalid.",
-    );
-  }
-
-  const app =
-    initializeApp({
-      credential: cert({
-        projectId:
-          projectId.trim(),
-
-        clientEmail:
-          clientEmail.trim(),
-
-        privateKey:
-          normalizedPrivateKey,
-      }),
-
-      storageBucket:
-        process.env
-          .NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    });
-
-  return getFirestore(app);
-}
-
-/**
- * GET /api/enquiries
- *
- * Simple production health check.
- *
- * This lets us verify that Vercel can execute
- * the API function and return JSON.
- */
 export async function GET() {
-  return NextResponse.json({
-    success: true,
-    message:
-      "Enquiry API is running.",
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      message:
+        "Enquiry API is running.",
+    },
+    {
+      status: 200,
+    },
+  );
 }
 
-/**
- * POST /api/enquiries
- *
- * Public enquiry submission.
- */
 export async function POST(
   request: Request,
 ) {
   try {
-    /*
-     * Parse JSON safely.
-     */
     let body: unknown;
 
+    /*
+     * Safely parse request JSON.
+     */
     try {
-      body = await request.json();
+      body =
+        await request.json();
     } catch {
       return NextResponse.json(
         {
@@ -157,10 +57,12 @@ export async function POST(
     }
 
     /*
-     * Validate form.
+     * Validate the public enquiry.
      */
     const result =
-      enquirySchema.safeParse(body);
+      enquirySchema.safeParse(
+        body,
+      );
 
     if (!result.success) {
       return NextResponse.json(
@@ -178,28 +80,23 @@ export async function POST(
       );
     }
 
-    /*
-     * Firebase initialization happens INSIDE
-     * the try/catch.
-     */
-    const adminDb =
-      getFirestoreAdmin();
-
-    const data = result.data;
+    const data =
+      result.data;
 
     /*
-     * Customer document.
+     * Firebase Admin is initialized
+     * only here, inside the try/catch.
      */
+    const db =
+      getAdminDb();
+
     const customerRef =
-      adminDb
+      db
         .collection("customers")
         .doc();
 
-    /*
-     * Enquiry document.
-     */
     const enquiryRef =
-      adminDb
+      db
         .collection("enquiries")
         .doc();
 
@@ -272,10 +169,13 @@ export async function POST(
     };
 
     /*
-     * Write customer + enquiry atomically.
+     * Atomic Firestore write.
+     *
+     * Either both documents are written,
+     * or neither is written.
      */
     const batch =
-      adminDb.batch();
+      db.batch();
 
     batch.set(
       customerRef,
@@ -289,9 +189,6 @@ export async function POST(
 
     await batch.commit();
 
-    /*
-     * Successful JSON response.
-     */
     return NextResponse.json(
       {
         success: true,
@@ -310,29 +207,22 @@ export async function POST(
       },
     );
   } catch (error) {
-    /*
-     * IMPORTANT:
-     * Every server error is converted into JSON.
-     */
     console.error(
-      "POST /api/enquiries ERROR:",
+      "POST /api/enquiries error:",
       error,
     );
-
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : String(error);
 
     return NextResponse.json(
       {
         success: false,
 
         message:
-          "Unable to submit enquiry right now.",
+          "Unable to submit enquiry right now. Please call us directly.",
 
         error:
-          errorMessage,
+          error instanceof Error
+            ? error.message
+            : String(error),
       },
       {
         status: 500,

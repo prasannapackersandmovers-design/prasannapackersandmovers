@@ -1,11 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { adminJson } from "@/lib/admin-api";
+import {
+  adminJson,
+} from "@/lib/admin-api";
 
 type DashboardData = {
+  success: boolean;
+
   stats: {
     totalEnquiries: number;
     newEnquiries: number;
@@ -54,7 +61,9 @@ const cards = [
 
 export default function AdminDashboardPage() {
   const [data, setData] =
-    useState<DashboardData | null>(null);
+    useState<DashboardData | null>(
+      null,
+    );
 
   const [loading, setLoading] =
     useState(true);
@@ -65,6 +74,9 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function loadDashboard() {
       try {
+        setLoading(true);
+        setError("");
+
         const result =
           await adminJson<DashboardData>(
             "/api/admin/dashboard",
@@ -72,6 +84,11 @@ export default function AdminDashboardPage() {
 
         setData(result);
       } catch (err) {
+        console.error(
+          "Dashboard loading error:",
+          err,
+        );
+
         setError(
           err instanceof Error
             ? err.message
@@ -102,28 +119,32 @@ export default function AdminDashboardPage() {
       </div>
 
       {error && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium leading-6 text-red-700">
           {error}
         </div>
       )}
 
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        {cards.map((card) => (
-          <div
-            key={card.key}
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-          >
-            <p className="text-sm font-semibold text-slate-500">
-              {card.label}
-            </p>
+        {cards.map(
+          (card) => (
+            <div
+              key={card.key}
+              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+            >
+              <p className="text-sm font-semibold text-slate-500">
+                {card.label}
+              </p>
 
-            <p className="mt-3 text-3xl font-black text-slate-900">
-              {loading
-                ? "—"
-                : data?.stats[card.key] ?? 0}
-            </p>
-          </div>
-        ))}
+              <p className="mt-3 text-3xl font-black text-slate-900">
+                {loading
+                  ? "—"
+                  : data?.stats[
+                      card.key
+                    ] ?? 0}
+              </p>
+            </div>
+          ),
+        )}
       </div>
 
       <section className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -150,7 +171,8 @@ export default function AdminDashboardPage() {
           <div className="p-10 text-center text-sm text-slate-500">
             Loading enquiries...
           </div>
-        ) : data?.recentEnquiries.length ? (
+        ) : data?.recentEnquiries
+            ?.length ? (
           <div className="divide-y divide-slate-100">
             {data.recentEnquiries.map(
               (enquiry) => (

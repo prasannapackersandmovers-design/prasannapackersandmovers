@@ -1,9 +1,14 @@
-import { NextResponse } from "next/server";
+﻿import {
+  NextResponse,
+} from "next/server";
+
 import {
   FieldValue,
 } from "firebase-admin/firestore";
 
-import { adminDb } from "@/lib/firebase/admin";
+import {
+  adminDb,
+} from "@/lib/firebase/admin";
 
 import {
   authErrorResponse,
@@ -18,19 +23,30 @@ import {
   generateBookingReference,
 } from "@/lib/utils";
 
+export const runtime = "nodejs";
+export const dynamic =
+  "force-dynamic";
+
 function serialize(
   id: string,
   data: FirebaseFirestore.DocumentData,
 ) {
   return {
     id,
+
     ...data,
+
     createdAt:
-      data.createdAt?.toDate?.()?.toISOString() ??
+      data.createdAt
+        ?.toDate?.()
+        ?.toISOString() ??
       data.createdAt ??
       null,
+
     updatedAt:
-      data.updatedAt?.toDate?.()?.toISOString() ??
+      data.updatedAt
+        ?.toDate?.()
+        ?.toISOString() ??
       data.updatedAt ??
       null,
   };
@@ -40,7 +56,9 @@ export async function GET(
   request: Request,
 ) {
   try {
-    await requireAdmin(request);
+    await requireAdmin(
+      request,
+    );
 
     const snapshot =
       await adminDb
@@ -52,18 +70,57 @@ export async function GET(
         .limit(200)
         .get();
 
-    return NextResponse.json({
-      success: true,
-      bookings:
-        snapshot.docs.map((doc) =>
-          serialize(
-            doc.id,
-            doc.data(),
+    return NextResponse.json(
+      {
+        success: true,
+
+        bookings:
+          snapshot.docs.map(
+            (doc) =>
+              serialize(
+                doc.id,
+                doc.data(),
+              ),
           ),
-        ),
-    });
+      },
+      {
+        status: 200,
+      },
+    );
   } catch (error) {
-    return authErrorResponse(error);
+    console.error(
+      "GET /api/admin/bookings error:",
+      error,
+    );
+
+    if (
+      error instanceof Error &&
+      (
+        error.message ===
+          "UNAUTHORIZED" ||
+        error.message ===
+          "FORBIDDEN"
+      )
+    ) {
+      return authErrorResponse(
+        error,
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Unable to load bookings.",
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }
 
@@ -71,12 +128,17 @@ export async function POST(
   request: Request,
 ) {
   try {
-    await requireAdmin(request);
+    await requireAdmin(
+      request,
+    );
 
-    const body = await request.json();
+    const body =
+      await request.json();
 
     const result =
-      bookingSchema.safeParse(body);
+      bookingSchema.safeParse(
+        body,
+      );
 
     if (!result.success) {
       return NextResponse.json(
@@ -88,7 +150,9 @@ export async function POST(
             result.error.flatten()
               .fieldErrors,
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
@@ -107,39 +171,80 @@ export async function POST(
       ...result.data,
 
       enquiryId:
-        result.data.enquiryId || "",
+        result.data.enquiryId ||
+        "",
 
       finalPrice:
-        result.data.finalPrice ?? null,
+        result.data.finalPrice ??
+        null,
 
-      createdAt: now,
+      createdAt:
+        now,
 
-      updatedAt: now,
+      updatedAt:
+        now,
     });
 
-    if (result.data.enquiryId) {
+    if (
+      result.data.enquiryId
+    ) {
       await adminDb
         .collection("enquiries")
-        .doc(result.data.enquiryId)
+        .doc(
+          result.data.enquiryId,
+        )
         .update({
-          status: "CONVERTED",
-          updatedAt: now,
+          status:
+            "CONVERTED",
+
+          updatedAt:
+            now,
         });
     }
 
     return NextResponse.json(
       {
         success: true,
-        bookingId: ref.id,
+        bookingId:
+          ref.id,
       },
-      { status: 201 },
+      {
+        status: 201,
+      },
     );
   } catch (error) {
     console.error(
-      "Booking creation error:",
+      "POST /api/admin/bookings error:",
       error,
     );
 
-    return authErrorResponse(error);
+    if (
+      error instanceof Error &&
+      (
+        error.message ===
+          "UNAUTHORIZED" ||
+        error.message ===
+          "FORBIDDEN"
+      )
+    ) {
+      return authErrorResponse(
+        error,
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Unable to create booking.",
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }
