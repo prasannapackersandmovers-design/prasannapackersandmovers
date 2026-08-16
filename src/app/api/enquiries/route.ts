@@ -1,17 +1,31 @@
 import { NextResponse } from "next/server";
-import {
-  FieldValue,
-} from "firebase-admin/firestore";
+import { FieldValue } from "firebase-admin/firestore";
 
 import { adminDb } from "@/lib/firebase/admin";
 import { enquirySchema } from "@/lib/validations";
 
 export const runtime = "nodejs";
 
+/**
+ * POST /api/enquiries
+ *
+ * Public website enquiry submission.
+ *
+ * Creates:
+ *
+ * customers/{customerId}
+ * enquiries/{enquiryId}
+ *
+ * using a Firestore batch so both documents
+ * are written together.
+ */
 export async function POST(
   request: Request,
 ) {
   try {
+    /**
+     * Parse request body safely.
+     */
     let body: unknown;
 
     try {
@@ -21,12 +35,17 @@ export async function POST(
         {
           success: false,
           message:
-            "Invalid request data. Please try again.",
+            "Invalid request data.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
+    /**
+     * Validate submitted enquiry.
+     */
     const result =
       enquirySchema.safeParse(body);
 
@@ -40,41 +59,61 @@ export async function POST(
             result.error.flatten()
               .fieldErrors,
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
     const data = result.data;
 
-    const customerRef =
-      adminDb
-        .collection("customers")
-        .doc();
+    /**
+     * Create Firestore document references.
+     */
+    const customerRef = adminDb
+      .collection("customers")
+      .doc();
 
-    const enquiryRef =
-      adminDb
-        .collection("enquiries")
-        .doc();
+    const enquiryRef = adminDb
+      .collection("enquiries")
+      .doc();
 
+    /**
+     * Firestore server timestamp.
+     */
     const now =
       FieldValue.serverTimestamp();
 
+    /**
+     * Customer document.
+     */
     const customerData = {
       fullName: data.fullName,
       phone: data.phone,
       email: data.email || "",
+
       createdAt: now,
       updatedAt: now,
     };
 
+    /**
+     * Enquiry document.
+     */
     const enquiryData = {
-      customerId: customerRef.id,
+      customerId:
+        customerRef.id,
 
-      fullName: data.fullName,
-      phone: data.phone,
-      email: data.email || "",
+      fullName:
+        data.fullName,
 
-      serviceType: data.serviceType,
+      phone:
+        data.phone,
+
+      email:
+        data.email || "",
+
+      serviceType:
+        data.serviceType,
 
       pickupLocation:
         data.pickupLocation,
@@ -89,63 +128,105 @@ export async function POST(
         data.additionalRequirements ||
         "",
 
-      status: "NEW",
+      status:
+        "NEW",
 
-      source: "WEBSITE",
+      source:
+        "WEBSITE",
 
-      assignedTo: "",
+      assignedTo:
+        "",
 
-      adminNotes: "",
+      adminNotes:
+        "",
 
-      createdAt: now,
+      createdAt:
+        now,
 
-      updatedAt: now,
+      updatedAt:
+        now,
     };
 
+    /**
+     * Firestore batch.
+     */
     const batch =
       adminDb.batch();
 
+    /**
+     * Create customer.
+     */
     batch.set(
       customerRef,
       customerData,
     );
 
+    /**
+     * Create enquiry.
+     */
     batch.set(
       enquiryRef,
       enquiryData,
     );
 
+    /**
+     * Commit both documents.
+     */
     await batch.commit();
 
+    /**
+     * Always return valid JSON.
+     */
     return NextResponse.json(
       {
         success: true,
+
         message:
           "Enquiry submitted successfully.",
+
         enquiryId:
           enquiryRef.id,
+
         customerId:
           customerRef.id,
       },
-      { status: 201 },
+      {
+        status: 201,
+      },
     );
   } catch (error) {
+    /**
+     * Log the complete server error.
+     */
     console.error(
       "POST /api/enquiries error:",
       error,
     );
 
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unknown server error";
-
+    /**
+     * Never return an empty response.
+     *
+     * This is important because the frontend
+     * expects JSON from this endpoint.
+     */
     return NextResponse.json(
       {
         success: false,
-        message,
+
+        message:
+          "Unable to submit enquiry right now. Please call us directly.",
+
+        error:
+          process.env.NODE_ENV ===
+          "production"
+            ? "Server configuration or database error."
+            : error instanceof Error
+              ? error.message
+              : "Unknown server error.",
       },
-      { status: 500 },
+      {
+        status: 500,
+      },
     );
   }
 }
