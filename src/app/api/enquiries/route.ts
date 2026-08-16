@@ -12,7 +12,20 @@ export async function POST(
   request: Request,
 ) {
   try {
-    const body = await request.json();
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Invalid request data. Please try again.",
+        },
+        { status: 400 },
+      );
+    }
 
     const result =
       enquirySchema.safeParse(body);
@@ -34,12 +47,17 @@ export async function POST(
     const data = result.data;
 
     const customerRef =
-      adminDb.collection("customers").doc();
+      adminDb
+        .collection("customers")
+        .doc();
 
     const enquiryRef =
-      adminDb.collection("enquiries").doc();
+      adminDb
+        .collection("enquiries")
+        .doc();
 
-    const now = FieldValue.serverTimestamp();
+    const now =
+      FieldValue.serverTimestamp();
 
     const customerData = {
       fullName: data.fullName,
@@ -68,7 +86,8 @@ export async function POST(
         data.movingDate,
 
       additionalRequirements:
-        data.additionalRequirements || "",
+        data.additionalRequirements ||
+        "",
 
       status: "NEW",
 
@@ -79,6 +98,7 @@ export async function POST(
       adminNotes: "",
 
       createdAt: now,
+
       updatedAt: now,
     };
 
@@ -97,24 +117,33 @@ export async function POST(
 
     await batch.commit();
 
-    return NextResponse.json({
-      success: true,
-      message:
-        "Enquiry submitted successfully.",
-      enquiryId: enquiryRef.id,
-      customerId: customerRef.id,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message:
+          "Enquiry submitted successfully.",
+        enquiryId:
+          enquiryRef.id,
+        customerId:
+          customerRef.id,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     console.error(
       "POST /api/enquiries error:",
       error,
     );
 
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown server error";
+
     return NextResponse.json(
       {
         success: false,
-        message:
-          "Unable to submit enquiry right now. Please call us directly.",
+        message,
       },
       { status: 500 },
     );

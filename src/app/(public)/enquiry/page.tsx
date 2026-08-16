@@ -10,18 +10,54 @@ import {
 } from "lucide-react";
 
 const services = [
-  "Home Relocation",
-  "Office Relocation",
-  "Vehicle Transportation",
-  "Packing & Unpacking",
-  "Loading & Unloading",
-  "AC Services",
-  "TV Installation & Service",
-  "Water Purifier",
-  "Geyser Services",
-  "Fan Services",
-  "Electrical Work",
-  "Plumbing",
+  {
+    value: "HOME_RELOCATION",
+    label: "Home Relocation",
+  },
+  {
+    value: "OFFICE_RELOCATION",
+    label: "Office Relocation",
+  },
+  {
+    value: "VEHICLE_TRANSPORTATION",
+    label: "Vehicle Transportation",
+  },
+  {
+    value: "PACKING_UNPACKING",
+    label: "Packing & Unpacking",
+  },
+  {
+    value: "LOADING_UNLOADING",
+    label: "Loading & Unloading",
+  },
+  {
+    value: "AC_SERVICES",
+    label: "AC Services",
+  },
+  {
+    value: "TV_INSTALLATION_SERVICE",
+    label: "TV Installation & Service",
+  },
+  {
+    value: "WATER_PURIFIER",
+    label: "Water Purifier",
+  },
+  {
+    value: "GEYSER_SERVICES",
+    label: "Geyser Services",
+  },
+  {
+    value: "FAN_SERVICES",
+    label: "Fan Services",
+  },
+  {
+    value: "ELECTRICAL_WORK",
+    label: "Electrical Work",
+  },
+  {
+    value: "PLUMBING",
+    label: "Plumbing",
+  },
 ];
 
 const phoneNumber = "7780177012";
@@ -31,7 +67,9 @@ export default function EnquiryPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     setIsSubmitting(true);
@@ -41,44 +79,108 @@ export default function EnquiryPage() {
     const formData = new FormData(form);
 
     const payload = {
-      name: String(formData.get("name") || ""),
-      phone: String(formData.get("phone") || ""),
-      email: String(formData.get("email") || ""),
+      fullName: String(
+        formData.get("fullName") || "",
+      ).trim(),
+
+      phone: String(
+        formData.get("phone") || "",
+      ).trim(),
+
+      email: String(
+        formData.get("email") || "",
+      ).trim(),
+
       pickupLocation: String(
         formData.get("pickupLocation") || "",
-      ),
-      dropLocation: String(formData.get("dropLocation") || ""),
-      movingDate: String(formData.get("movingDate") || ""),
-      service: String(formData.get("service") || ""),
+      ).trim(),
+
+      dropLocation: String(
+        formData.get("dropLocation") || "",
+      ).trim(),
+
+      movingDate: String(
+        formData.get("movingDate") || "",
+      ).trim(),
+
+      serviceType: String(
+        formData.get("serviceType") || "",
+      ).trim(),
+
       additionalRequirements: String(
         formData.get("additionalRequirements") || "",
-      ),
+      ).trim(),
     };
 
     try {
-      const response = await fetch("/api/enquiries", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "/api/enquiries",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify(payload),
-      });
+      );
 
-      const result = await response.json();
+      /*
+       * Read the response safely.
+       *
+       * This prevents:
+       * "Unexpected end of JSON input"
+       * when the server returns an empty/non-JSON response.
+       */
+      const responseText = await response.text();
+
+      let result: {
+        success?: boolean;
+        message?: string;
+        errors?: Record<string, string[]>;
+      } = {};
+
+      if (responseText.trim()) {
+        try {
+          result = JSON.parse(responseText);
+        } catch {
+          throw new Error(
+            `Server returned an invalid response (${response.status}). Please try again.`,
+          );
+        }
+      } else {
+        throw new Error(
+          `Server returned an empty response (${response.status}). Please try again.`,
+        );
+      }
 
       if (!response.ok || !result.success) {
+        const validationMessages = result.errors
+          ? Object.values(result.errors)
+              .flat()
+              .filter(Boolean)
+              .join(" ")
+          : "";
+
         throw new Error(
-          result.message || "Unable to submit your enquiry.",
+          validationMessages ||
+            result.message ||
+            "Unable to submit your enquiry.",
         );
       }
 
       setSubmitted(true);
       form.reset();
     } catch (submitError) {
+      console.error(
+        "Enquiry submission error:",
+        submitError,
+      );
+
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Unable to submit your enquiry.",
+          : "Unable to submit your enquiry. Please call us directly.",
       );
     } finally {
       setIsSubmitting(false);
@@ -99,9 +201,9 @@ export default function EnquiryPage() {
             </h1>
 
             <p className="mx-auto mt-4 max-w-lg leading-7 text-gray-600">
-              Thank you for contacting Prashanth Packers &amp; Movers.
-              Our team will contact you soon to understand your
-              requirements.
+              Thank you for contacting Prasanna Packers
+              &amp; Movers. Our team will contact you
+              soon to understand your requirements.
             </p>
 
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
@@ -130,7 +232,7 @@ export default function EnquiryPage() {
     <main className="min-h-screen bg-gray-50 px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
-          {/* Information */}
+          {/* INFORMATION */}
           <div>
             <span className="inline-flex rounded-full border border-orange-200 bg-orange-50 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-orange-600">
               Request a Call
@@ -141,11 +243,13 @@ export default function EnquiryPage() {
             </h1>
 
             <p className="mt-5 text-base leading-7 text-gray-600 sm:text-lg">
-              Share your requirements and our team will contact you to
-              understand the service and discuss the next steps.
+              Share your requirements and our team will
+              contact you to understand the service and
+              discuss the next steps.
             </p>
 
             <div className="mt-8 space-y-4">
+              {/* PHONE */}
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
                   <Phone size={19} />
@@ -165,6 +269,7 @@ export default function EnquiryPage() {
                 </div>
               </div>
 
+              {/* LOCATIONS */}
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
                   <MapPin size={19} />
@@ -183,25 +288,32 @@ export default function EnquiryPage() {
             </div>
           </div>
 
-          {/* Form */}
+          {/* FORM */}
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-5"
+            >
+              {/* NAME + PHONE */}
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label
-                    htmlFor="name"
+                    htmlFor="fullName"
                     className="mb-2 block text-sm font-semibold text-gray-900"
                   >
                     Full Name *
                   </label>
 
                   <input
-                    id="name"
-                    name="name"
+                    id="fullName"
+                    name="fullName"
                     type="text"
                     required
+                    minLength={2}
+                    maxLength={100}
                     placeholder="Enter your name"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                    disabled={isSubmitting}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
                   />
                 </div>
 
@@ -218,12 +330,17 @@ export default function EnquiryPage() {
                     name="phone"
                     type="tel"
                     required
-                    placeholder="Enter phone number"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                    pattern="[6-9][0-9]{9}"
+                    maxLength={10}
+                    inputMode="numeric"
+                    placeholder="10-digit mobile number"
+                    disabled={isSubmitting}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
                   />
                 </div>
               </div>
 
+              {/* EMAIL */}
               <div>
                 <label
                   htmlFor="email"
@@ -237,10 +354,12 @@ export default function EnquiryPage() {
                   name="email"
                   type="email"
                   placeholder="Enter email address"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                  disabled={isSubmitting}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
                 />
               </div>
 
+              {/* PICKUP + DROP */}
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label
@@ -255,8 +374,10 @@ export default function EnquiryPage() {
                     name="pickupLocation"
                     type="text"
                     required
+                    minLength={3}
                     placeholder="Guntur"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                    disabled={isSubmitting}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
                   />
                 </div>
 
@@ -273,57 +394,72 @@ export default function EnquiryPage() {
                     name="dropLocation"
                     type="text"
                     required
+                    minLength={3}
                     placeholder="Hyderabad"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                    disabled={isSubmitting}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
                   />
                 </div>
               </div>
 
+              {/* DATE + SERVICE */}
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label
                     htmlFor="movingDate"
                     className="mb-2 block text-sm font-semibold text-gray-900"
                   >
-                    Moving / Service Date
+                    Moving / Service Date *
                   </label>
 
                   <input
                     id="movingDate"
                     name="movingDate"
                     type="date"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                    required
+                    min={
+                      new Date()
+                        .toISOString()
+                        .split("T")[0]
+                    }
+                    disabled={isSubmitting}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
                   />
                 </div>
 
                 <div>
                   <label
-                    htmlFor="service"
+                    htmlFor="serviceType"
                     className="mb-2 block text-sm font-semibold text-gray-900"
                   >
                     Service *
                   </label>
 
                   <select
-                    id="service"
-                    name="service"
+                    id="serviceType"
+                    name="serviceType"
                     required
                     defaultValue=""
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                    disabled={isSubmitting}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
                   >
                     <option value="" disabled>
                       Select a service
                     </option>
 
                     {services.map((service) => (
-                      <option key={service} value={service}>
-                        {service}
+                      <option
+                        key={service.value}
+                        value={service.value}
+                      >
+                        {service.label}
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
 
+              {/* ADDITIONAL REQUIREMENTS */}
               <div>
                 <label
                   htmlFor="additionalRequirements"
@@ -337,16 +473,22 @@ export default function EnquiryPage() {
                   name="additionalRequirements"
                   rows={4}
                   placeholder="Tell us anything else we should know..."
-                  className="w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                  disabled={isSubmitting}
+                  className="w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
                 />
               </div>
 
+              {/* ERROR */}
               {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div
+                  role="alert"
+                  className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700"
+                >
                   {error}
                 </div>
               )}
 
+              {/* SUBMIT */}
               <button
                 type="submit"
                 disabled={isSubmitting}
@@ -354,7 +496,10 @@ export default function EnquiryPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 size={18} className="animate-spin" />
+                    <Loader2
+                      size={18}
+                      className="animate-spin"
+                    />
                     Submitting...
                   </>
                 ) : (
@@ -363,8 +508,9 @@ export default function EnquiryPage() {
               </button>
 
               <p className="text-center text-xs leading-5 text-gray-500">
-                Our team will contact you to understand your requirements.
-                Pricing is discussed manually based on your requirements.
+                Our team will contact you to understand
+                your requirements. Pricing is discussed
+                manually based on your requirements.
               </p>
             </form>
           </div>
