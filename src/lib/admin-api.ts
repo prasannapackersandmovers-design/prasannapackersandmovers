@@ -14,7 +14,7 @@ export async function adminFetch(
     );
   }
 
-  const token = await user.getIdToken();
+  const token = await user.getIdToken(true);
 
   const headers = new Headers(
     options.headers,
@@ -51,12 +51,45 @@ export async function adminJson<T>(
     options,
   );
 
-  const data = await response.json();
+  /*
+   * Read the response as text first.
+   *
+   * This prevents:
+   * Unexpected end of JSON input
+   *
+   * when the server returns an empty response.
+   */
+  const text =
+    await response.text();
 
-  if (!response.ok || data.success === false) {
+  if (!text.trim()) {
     throw new Error(
-      data.message ||
-        "The server request failed.",
+      `Server returned an empty response (${response.status}). Please try again.`,
+    );
+  }
+
+  let data: {
+    success?: boolean;
+    message?: string;
+    [key: string]: unknown;
+  };
+
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Server returned invalid JSON (${response.status}).`,
+    );
+  }
+
+  if (
+    !response.ok ||
+    data.success === false
+  ) {
+    throw new Error(
+      typeof data.message === "string"
+        ? data.message
+        : `The server request failed (${response.status}).`,
     );
   }
 
