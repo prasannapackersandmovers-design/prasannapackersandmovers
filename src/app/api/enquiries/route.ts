@@ -1,30 +1,143 @@
 import { NextResponse } from "next/server";
+import {
+  cert,
+  getApps,
+  initializeApp,
+} from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 import { FieldValue } from "firebase-admin/firestore";
 
-import { adminDb } from "@/lib/firebase/admin";
 import { enquirySchema } from "@/lib/validations";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+/**
+ * Get Firebase Admin Firestore for this request.
+ *
+ * Firebase is initialized inside the request handler,
+ * so configuration errors can be caught and returned
+ * as JSON instead of causing an empty 500 response.
+ */
+function getFirestoreAdmin() {
+  const existingApps = getApps();
+
+  if (existingApps.length > 0) {
+    return getFirestore(existingApps[0]);
+  }
+
+  const projectId =
+    process.env.FIREBASE_PROJECT_ID;
+
+  const clientEmail =
+    process.env.FIREBASE_CLIENT_EMAIL;
+
+  const privateKey =
+    process.env.FIREBASE_PRIVATE_KEY;
+
+  if (!projectId) {
+    throw new Error(
+      "Missing FIREBASE_PROJECT_ID in Vercel environment variables.",
+    );
+  }
+
+  if (!clientEmail) {
+    throw new Error(
+      "Missing FIREBASE_CLIENT_EMAIL in Vercel environment variables.",
+    );
+  }
+
+  if (!privateKey) {
+    throw new Error(
+      "Missing FIREBASE_PRIVATE_KEY in Vercel environment variables.",
+    );
+  }
+
+  let normalizedPrivateKey =
+    privateKey.trim();
+
+  /*
+   * Remove surrounding quotes if they were
+   * accidentally included in the Vercel value.
+   */
+  if (
+    normalizedPrivateKey.startsWith('"') &&
+    normalizedPrivateKey.endsWith('"')
+  ) {
+    normalizedPrivateKey =
+      normalizedPrivateKey.slice(1, -1);
+  }
+
+  /*
+   * Convert literal \\n into real newlines.
+   */
+  normalizedPrivateKey =
+    normalizedPrivateKey.replace(
+      /\\n/g,
+      "\n",
+    );
+
+  if (
+    !normalizedPrivateKey.includes(
+      "-----BEGIN PRIVATE KEY-----",
+    ) ||
+    !normalizedPrivateKey.includes(
+      "-----END PRIVATE KEY-----",
+    )
+  ) {
+    throw new Error(
+      "FIREBASE_PRIVATE_KEY format is invalid.",
+    );
+  }
+
+  const app =
+    initializeApp({
+      credential: cert({
+        projectId:
+          projectId.trim(),
+
+        clientEmail:
+          clientEmail.trim(),
+
+        privateKey:
+          normalizedPrivateKey,
+      }),
+
+      storageBucket:
+        process.env
+          .NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    });
+
+  return getFirestore(app);
+}
+
+/**
+ * GET /api/enquiries
+ *
+ * Simple production health check.
+ *
+ * This lets us verify that Vercel can execute
+ * the API function and return JSON.
+ */
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    message:
+      "Enquiry API is running.",
+  });
+}
 
 /**
  * POST /api/enquiries
  *
- * Public website enquiry submission.
- *
- * Creates:
- *
- * customers/{customerId}
- * enquiries/{enquiryId}
- *
- * using a Firestore batch so both documents
- * are written together.
+ * Public enquiry submission.
  */
 export async function POST(
   request: Request,
 ) {
   try {
-    /**
-     * Parse request body safely.
+    /*
+     * Parse JSON safely.
      */
     let body: unknown;
 
@@ -35,7 +148,7 @@ export async function POST(
         {
           success: false,
           message:
-            "Invalid request data.",
+            "Invalid form submission.",
         },
         {
           status: 400,
@@ -43,8 +156,8 @@ export async function POST(
       );
     }
 
-    /**
-     * Validate submitted enquiry.
+    /*
+     * Validate form.
      */
     const result =
       enquirySchema.safeParse(body);
@@ -65,40 +178,51 @@ export async function POST(
       );
     }
 
+    /*
+     * Firebase initialization happens INSIDE
+     * the try/catch.
+     */
+    const adminDb =
+      getFirestoreAdmin();
+
     const data = result.data;
 
-    /**
-     * Create Firestore document references.
+    /*
+     * Customer document.
      */
-    const customerRef = adminDb
-      .collection("customers")
-      .doc();
+    const customerRef =
+      adminDb
+        .collection("customers")
+        .doc();
 
-    const enquiryRef = adminDb
-      .collection("enquiries")
-      .doc();
-
-    /**
-     * Firestore server timestamp.
+    /*
+     * Enquiry document.
      */
+    const enquiryRef =
+      adminDb
+        .collection("enquiries")
+        .doc();
+
     const now =
       FieldValue.serverTimestamp();
 
-    /**
-     * Customer document.
-     */
     const customerData = {
-      fullName: data.fullName,
-      phone: data.phone,
-      email: data.email || "",
+      fullName:
+        data.fullName,
 
-      createdAt: now,
-      updatedAt: now,
+      phone:
+        data.phone,
+
+      email:
+        data.email || "",
+
+      createdAt:
+        now,
+
+      updatedAt:
+        now,
     };
 
-    /**
-     * Enquiry document.
-     */
     const enquiryData = {
       customerId:
         customerRef.id,
@@ -147,35 +271,26 @@ export async function POST(
         now,
     };
 
-    /**
-     * Firestore batch.
+    /*
+     * Write customer + enquiry atomically.
      */
     const batch =
       adminDb.batch();
 
-    /**
-     * Create customer.
-     */
     batch.set(
       customerRef,
       customerData,
     );
 
-    /**
-     * Create enquiry.
-     */
     batch.set(
       enquiryRef,
       enquiryData,
     );
 
-    /**
-     * Commit both documents.
-     */
     await batch.commit();
 
-    /**
-     * Always return valid JSON.
+    /*
+     * Successful JSON response.
      */
     return NextResponse.json(
       {
@@ -195,34 +310,29 @@ export async function POST(
       },
     );
   } catch (error) {
-    /**
-     * Log the complete server error.
+    /*
+     * IMPORTANT:
+     * Every server error is converted into JSON.
      */
     console.error(
-      "POST /api/enquiries error:",
+      "POST /api/enquiries ERROR:",
       error,
     );
 
-    /**
-     * Never return an empty response.
-     *
-     * This is important because the frontend
-     * expects JSON from this endpoint.
-     */
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : String(error);
+
     return NextResponse.json(
       {
         success: false,
 
         message:
-          "Unable to submit enquiry right now. Please call us directly.",
+          "Unable to submit enquiry right now.",
 
         error:
-          process.env.NODE_ENV ===
-          "production"
-            ? "Server configuration or database error."
-            : error instanceof Error
-              ? error.message
-              : "Unknown server error.",
+          errorMessage,
       },
       {
         status: 500,
