@@ -4,141 +4,204 @@ import {
   cert,
   getApps,
   initializeApp,
+  type App,
 } from "firebase-admin/app";
 
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
-import { getStorage } from "firebase-admin/storage";
+import {
+  getAuth,
+  type Auth,
+} from "firebase-admin/auth";
 
-/**
- * Firebase Admin environment variables
- */
-const projectId =
-  process.env.FIREBASE_PROJECT_ID;
+import {
+  getFirestore,
+  type Firestore,
+} from "firebase-admin/firestore";
 
-const clientEmail =
-  process.env.FIREBASE_CLIENT_EMAIL;
+import {
+  getStorage,
+  type Storage,
+} from "firebase-admin/storage";
 
-const privateKey =
-  process.env.FIREBASE_PRIVATE_KEY;
+let firebaseAdminApp: App | null = null;
 
-/**
- * Validate required environment variables.
- */
-if (!projectId) {
-  throw new Error(
-    "Missing FIREBASE_PROJECT_ID",
-  );
-}
+function getFirebaseAdminApp(): App {
+  if (firebaseAdminApp) {
+    return firebaseAdminApp;
+  }
 
-if (!clientEmail) {
-  throw new Error(
-    "Missing FIREBASE_CLIENT_EMAIL",
-  );
-}
+  const existingApps = getApps();
 
-if (!privateKey) {
-  throw new Error(
-    "Missing FIREBASE_PRIVATE_KEY",
-  );
-}
+  if (existingApps.length > 0) {
+    firebaseAdminApp = existingApps[0];
+    return firebaseAdminApp;
+  }
 
-/**
- * Normalize Firebase service-account private key.
- *
- * Vercel environment variables commonly store
- * newline characters as literal "\\n".
- *
- * Convert them into real newline characters.
- */
-let normalizedPrivateKey =
-  privateKey.trim();
+  const projectId =
+    process.env.FIREBASE_PROJECT_ID;
 
-/**
- * Remove surrounding quotes if the entire
- * environment variable was pasted with quotes.
- */
-if (
-  normalizedPrivateKey.startsWith('"') &&
-  normalizedPrivateKey.endsWith('"')
-) {
+  const clientEmail =
+    process.env.FIREBASE_CLIENT_EMAIL;
+
+  const privateKey =
+    process.env.FIREBASE_PRIVATE_KEY;
+
+  if (!projectId) {
+    throw new Error(
+      "Missing FIREBASE_PROJECT_ID.",
+    );
+  }
+
+  if (!clientEmail) {
+    throw new Error(
+      "Missing FIREBASE_CLIENT_EMAIL.",
+    );
+  }
+
+  if (!privateKey) {
+    throw new Error(
+      "Missing FIREBASE_PRIVATE_KEY.",
+    );
+  }
+
+  let normalizedPrivateKey =
+    privateKey.trim();
+
+  if (
+    normalizedPrivateKey.startsWith('"') &&
+    normalizedPrivateKey.endsWith('"')
+  ) {
+    normalizedPrivateKey =
+      normalizedPrivateKey.slice(1, -1);
+  }
+
   normalizedPrivateKey =
-    normalizedPrivateKey.slice(1, -1);
+    normalizedPrivateKey.replace(
+      /\\n/g,
+      "\n",
+    );
+
+  if (
+    !normalizedPrivateKey.includes(
+      "-----BEGIN PRIVATE KEY-----",
+    ) ||
+    !normalizedPrivateKey.includes(
+      "-----END PRIVATE KEY-----",
+    )
+  ) {
+    throw new Error(
+      "FIREBASE_PRIVATE_KEY is invalid.",
+    );
+  }
+
+  firebaseAdminApp =
+    initializeApp({
+      credential: cert({
+        projectId:
+          projectId.trim(),
+
+        clientEmail:
+          clientEmail.trim(),
+
+        privateKey:
+          normalizedPrivateKey,
+      }),
+
+      storageBucket:
+        process.env
+          .NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    });
+
+  return firebaseAdminApp;
 }
 
 /**
- * Convert escaped newlines into actual
- * newline characters.
- */
-normalizedPrivateKey =
-  normalizedPrivateKey.replace(
-    /\\n/g,
-    "\n",
-  );
-
-/**
- * Validate private-key structure before
- * passing it to Firebase Admin.
- */
-if (
-  !normalizedPrivateKey.includes(
-    "-----BEGIN PRIVATE KEY-----",
-  ) ||
-  !normalizedPrivateKey.includes(
-    "-----END PRIVATE KEY-----",
-  )
-) {
-  throw new Error(
-    "FIREBASE_PRIVATE_KEY is invalid. It must contain BEGIN PRIVATE KEY and END PRIVATE KEY.",
-  );
-}
-
-/**
- * Initialize Firebase Admin only once.
+ * Lazy Firebase Admin Firestore.
  *
- * Next.js development mode can evaluate
- * modules multiple times, so reuse an
- * existing Firebase Admin app when available.
- */
-const firebaseAdminApp =
-  getApps().length > 0
-    ? getApps()[0]
-    : initializeApp({
-        credential: cert({
-          projectId:
-            projectId.trim(),
-
-          clientEmail:
-            clientEmail.trim(),
-
-          privateKey:
-            normalizedPrivateKey,
-        }),
-
-        storageBucket:
-          process.env
-            .NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-      });
-
-/**
- * Firebase Admin Authentication
- */
-export const adminAuth =
-  getAuth(firebaseAdminApp);
-
-/**
- * Firebase Admin Firestore
+ * Firebase is initialized only when
+ * Firestore is actually accessed.
  */
 export const adminDb =
-  getFirestore(firebaseAdminApp);
+  new Proxy({} as Firestore, {
+    get(_target, property) {
+      const db =
+        getFirestore(
+          getFirebaseAdminApp(),
+        );
+
+      const value =
+        Reflect.get(
+          db,
+          property,
+          db,
+        );
+
+      if (
+        typeof value ===
+        "function"
+      ) {
+        return value.bind(db);
+      }
+
+      return value;
+    },
+  });
 
 /**
- * Firebase Admin Storage
+ * Lazy Firebase Admin Auth.
+ */
+export const adminAuth =
+  new Proxy({} as Auth, {
+    get(_target, property) {
+      const auth =
+        getAuth(
+          getFirebaseAdminApp(),
+        );
+
+      const value =
+        Reflect.get(
+          auth,
+          property,
+          auth,
+        );
+
+      if (
+        typeof value ===
+        "function"
+      ) {
+        return value.bind(auth);
+      }
+
+      return value;
+    },
+  });
+
+/**
+ * Lazy Firebase Admin Storage.
  */
 export const adminStorage =
-  getStorage(firebaseAdminApp);
+  new Proxy({} as Storage, {
+    get(_target, property) {
+      const storage =
+        getStorage(
+          getFirebaseAdminApp(),
+        );
 
-/**
- * Default Firebase Admin application
- */
-export default firebaseAdminApp;
+      const value =
+        Reflect.get(
+          storage,
+          property,
+          storage,
+        );
+
+      if (
+        typeof value ===
+        "function"
+      ) {
+        return value.bind(storage);
+      }
+
+      return value;
+    },
+  });
+
+export default getFirebaseAdminApp;
