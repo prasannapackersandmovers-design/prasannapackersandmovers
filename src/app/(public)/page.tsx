@@ -169,18 +169,14 @@ const steps = [
 export default function HomePage() {
   return (
     <main className="overflow-hidden bg-white">
-
       {/* =========================================================
           HERO
       ========================================================= */}
       <section className="relative bg-white">
         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-
           <div className="grid items-center gap-8 py-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-5 lg:py-10">
-
             {/* HERO CONTENT */}
             <div className="relative z-10">
-
               <div className="inline-flex items-center rounded-full border border-orange-300 bg-white px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-orange-600">
                 #1 Trusted Local Service
               </div>
@@ -198,30 +194,44 @@ export default function HomePage() {
                 assistance you can trust.
               </p>
 
-              {/* CTA BUTTONS */}
-              <div className="mt-7 flex flex-wrap gap-4">
+              {/* =====================================================
+                  HERO CTA BUTTONS
+                  Request Service -> /enquiry
+                  Call Now -> phone
+                  Our Services -> /services
+              ====================================================== */}
+              <div className="mt-7 flex flex-wrap gap-3 sm:gap-4">
+                {/* REQUEST SERVICE */}
+                <Link
+                  href="/enquiry"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#ff5a00] px-6 py-3.5 font-bold text-white shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:bg-[#e94f00] sm:px-7"
+                >
+                  <ClipboardList className="h-5 w-5" />
+                  Request a Service
+                  <ArrowRight className="h-5 w-5" />
+                </Link>
 
+                {/* CALL NOW */}
                 <a
                   href="tel:7780177012"
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#ff5a00] px-7 py-3.5 font-bold text-white shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:bg-[#e94f00]"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#0b3d82] bg-white px-6 py-3.5 font-bold text-[#0b3d82] transition hover:bg-[#0b3d82] hover:text-white sm:px-7"
                 >
                   <Phone className="h-5 w-5" />
                   Call Now
                 </a>
 
+                {/* OUR SERVICES */}
                 <Link
                   href="/services"
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#0b3d82] bg-white px-7 py-3.5 font-bold text-[#0b3d82] transition hover:bg-[#0b3d82] hover:text-white"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-6 py-3.5 font-bold text-slate-700 transition hover:border-[#0b3d82] hover:bg-[#0b3d82] hover:text-white sm:px-7"
                 >
                   Our Services
                   <ArrowRight className="h-5 w-5" />
                 </Link>
-
               </div>
 
               {/* HERO MINI FEATURES */}
               <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-4 text-sm font-semibold text-slate-700 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-
                 <div className="flex items-center gap-2">
                   <Clock3 className="h-5 w-5 shrink-0 text-orange-500" />
                   <span>24/7 Support</span>
@@ -241,13 +251,11 @@ export default function HomePage() {
                   <MapPin className="h-5 w-5 shrink-0 text-orange-500" />
                   <span>4+ Cities</span>
                 </div>
-
               </div>
             </div>
 
             {/* HERO IMAGE */}
             <div className="relative min-h-97.5 overflow-hidden rounded-3xl lg:min-h-127.5">
-
               <Image
                 src={HERO_IMAGE}
                 alt="Prasanna Packers and Movers service"
@@ -262,7 +270,6 @@ export default function HomePage() {
 
               {/* 24/7 BADGE */}
               <div className="absolute right-5 top-5 flex h-28 w-28 flex-col items-center justify-center rounded-full border-4 border-white bg-[#0b2f67] text-center text-white shadow-2xl sm:h-32 sm:w-32">
-
                 <span className="text-3xl font-black">
                   24/7
                 </span>
@@ -274,9 +281,7 @@ export default function HomePage() {
                 <span className="text-xs font-bold uppercase tracking-wider">
                   Support
                 </span>
-
               </div>
-
             </div>
           </div>
 
@@ -284,9 +289,7 @@ export default function HomePage() {
               TRUST BENEFITS
           ====================================================== */}
           <div className="relative z-20 -mt-2 mb-8 rounded-2xl border border-slate-100 bg-white shadow-xl">
-
             <div className="grid md:grid-cols-2 lg:grid-cols-4">
-
               {benefits.map((benefit, index) => {
                 const Icon = benefit.icon;
 
@@ -299,7 +302,6 @@ export default function HomePage() {
                         : ""
                     }`}
                   >
-
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-50">
                       <Icon className="h-6 w-6 text-orange-500" />
                     </div>
@@ -313,14 +315,11 @@ export default function HomePage() {
                         {benefit.description}
                       </p>
                     </div>
-
                   </div>
                 );
               })}
-
             </div>
           </div>
-
         </div>
       </section>
 
@@ -328,11 +327,8 @@ export default function HomePage() {
           SERVICES
       ========================================================= */}
       <section className="bg-white py-14 sm:py-20">
-
         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-
           <div className="text-center">
-
             <div className="flex items-center justify-center gap-3">
               <span className="h-0.5 w-8 bg-orange-500" />
 
@@ -351,12 +347,10 @@ export default function HomePage() {
               From moving homes to fixing appliances — we&apos;ve got
               you covered.
             </p>
-
           </div>
 
           {/* SERVICE CARDS */}
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-
             {services.map((service) => {
               const Icon = service.icon;
 
@@ -366,10 +360,8 @@ export default function HomePage() {
                   href={service.href}
                   className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl"
                 >
-
                   {/* IMAGE */}
                   <div className="relative h-36 overflow-hidden">
-
                     <Image
                       src={service.image}
                       alt={service.title}
@@ -379,12 +371,10 @@ export default function HomePage() {
                     />
 
                     <div className="absolute inset-0 bg-linear-to-t from-black/25 to-transparent" />
-
                   </div>
 
                   {/* CONTENT */}
                   <div className="relative px-4 pb-5 pt-8 text-center">
-
                     {/* ICON BADGE */}
                     <div
                       className={`absolute -top-6 left-1/2 flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full border-4 border-white ${service.iconClass} text-white shadow-md`}
@@ -399,14 +389,11 @@ export default function HomePage() {
                     <p className="mt-2 text-xs leading-5 text-slate-500">
                       {service.description}
                     </p>
-
                   </div>
                 </Link>
               );
             })}
-
           </div>
-
         </div>
       </section>
 
@@ -414,14 +401,10 @@ export default function HomePage() {
           WHY CHOOSE US + HOW IT WORKS
       ========================================================= */}
       <section className="bg-[#f7faff] py-12 sm:py-16">
-
         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-
           <div className="grid gap-5 lg:grid-cols-[0.9fr_1.6fr]">
-
             {/* WHY CHOOSE US */}
             <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
-
               <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">
                 Why Choose Us?
               </p>
@@ -433,7 +416,6 @@ export default function HomePage() {
               </h2>
 
               <div className="mt-7 space-y-4">
-
                 {whyChooseUs.map((item) => (
                   <div
                     key={item}
@@ -446,19 +428,16 @@ export default function HomePage() {
                     </span>
                   </div>
                 ))}
-
               </div>
             </div>
 
             {/* HOW IT WORKS */}
             <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
-
               <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">
                 How It Works
               </p>
 
               <div className="mt-6 grid gap-5 md:grid-cols-4">
-
                 {steps.map((step, index) => {
                   const Icon = step.icon;
 
@@ -467,9 +446,7 @@ export default function HomePage() {
                       key={step.number}
                       className="relative"
                     >
-
                       <div className="flex items-start gap-3">
-
                         <div
                           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${step.className}`}
                         >
@@ -489,20 +466,16 @@ export default function HomePage() {
                             {step.description}
                           </p>
                         </div>
-
                       </div>
 
                       {index < steps.length - 1 && (
                         <ChevronRight className="absolute -right-3 top-4 hidden h-5 w-5 text-slate-300 md:block" />
                       )}
-
                     </div>
                   );
                 })}
-
               </div>
             </div>
-
           </div>
         </div>
       </section>
@@ -511,17 +484,13 @@ export default function HomePage() {
           SERVICE AREAS
       ========================================================= */}
       <section className="bg-white py-8">
-
         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-
           <div className="text-center">
-
             <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-500">
               Our Service Areas
             </p>
 
             <div className="mt-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
-
               {locations.map((location) => (
                 <div
                   key={location}
@@ -531,30 +500,23 @@ export default function HomePage() {
                   {location}
                 </div>
               ))}
-
             </div>
-
           </div>
         </div>
       </section>
 
       {/* =========================================================
-          CTA
+          BOTTOM CTA
       ========================================================= */}
       <section className="px-5 py-8 sm:px-6 sm:py-12 lg:px-8">
-
         <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl bg-[#062b61]">
-
           <div className="grid items-center gap-8 px-7 py-9 sm:px-10 lg:grid-cols-[1fr_auto] lg:px-14">
-
             <div className="flex items-center gap-5">
-
               <div className="hidden h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-orange-500 sm:flex">
                 <Headphones className="h-9 w-9 text-orange-500" />
               </div>
 
               <div>
-
                 <p className="text-sm font-bold text-orange-400">
                   Need Help?
                 </p>
@@ -566,13 +528,10 @@ export default function HomePage() {
                 <p className="mt-2 text-sm text-blue-100">
                   Tell us what you need and our team will contact you.
                 </p>
-
               </div>
-
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-
               <Link
                 href="/enquiry"
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-500 px-7 py-3.5 font-bold text-white transition hover:bg-orange-600"
@@ -588,13 +547,10 @@ export default function HomePage() {
                 <Phone className="h-5 w-5" />
                 Call Now
               </a>
-
             </div>
-
           </div>
         </div>
       </section>
-
     </main>
   );
 }
