@@ -1,9 +1,13 @@
-﻿import Image from "next/image";
+﻿"use client";
+
+import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import {
   ArrowRight,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   ClipboardList,
   Clock3,
@@ -21,7 +25,36 @@ import {
   Zap,
 } from "lucide-react";
 
-const HERO_IMAGE = "/images/hero/prasanna-moving-team.jpg";
+const HERO_IMAGES = [
+  {
+    src: "/images/hero/prasanna-moving-team.jpg",
+    alt: "Prasanna Packers and Movers team and moving truck",
+  },
+  {
+    src: "/images/hero/packing-1.jpg",
+    alt: "Household items professionally packed for moving",
+  },
+  {
+    src: "/images/hero/packing-2.jpg",
+    alt: "Items safely packed for transportation",
+  },
+  {
+    src: "/images/hero/packing-3.jpg",
+    alt: "Professional packing service for household goods",
+  },
+  {
+    src: "/images/hero/packing-4.jpg",
+    alt: "Furniture professionally packed for relocation",
+  },
+  {
+    src: "/images/hero/packing-5.jpg",
+    alt: "Packed household goods ready for transportation",
+  },
+  {
+    src: "/images/hero/packing-6.jpg",
+    alt: "Professional moving and packing service",
+  },
+];
 
 const services = [
   {
@@ -167,6 +200,41 @@ const steps = [
 ];
 
 export default function HomePage() {
+  const [currentHeroImage, setCurrentHeroImage] =
+    useState(0);
+
+  /*
+   * Automatically move to the next hero image
+   * every 4 seconds.
+   */
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setCurrentHeroImage(
+        (current) =>
+          (current + 1) % HERO_IMAGES.length,
+      );
+    }, 4000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  function showPreviousImage() {
+    setCurrentHeroImage(
+      (current) =>
+        (current - 1 + HERO_IMAGES.length) %
+        HERO_IMAGES.length,
+    );
+  }
+
+  function showNextImage() {
+    setCurrentHeroImage(
+      (current) =>
+        (current + 1) % HERO_IMAGES.length,
+    );
+  }
+
   return (
     <main className="overflow-hidden bg-white">
       {/* =========================================================
@@ -194,12 +262,7 @@ export default function HomePage() {
                 assistance you can trust.
               </p>
 
-              {/* =====================================================
-                  HERO CTA BUTTONS
-                  Request Service -> /enquiry
-                  Call Now -> phone
-                  Our Services -> /services
-              ====================================================== */}
+              {/* HERO CTA BUTTONS */}
               <div className="mt-7 flex flex-wrap gap-3 sm:gap-4">
                 {/* REQUEST SERVICE */}
                 <Link
@@ -254,22 +317,36 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* HERO IMAGE */}
+            {/* =====================================================
+                HERO IMAGE SLIDESHOW
+            ====================================================== */}
             <div className="relative min-h-97.5 overflow-hidden rounded-3xl lg:min-h-127.5">
-              <Image
-                src={HERO_IMAGE}
-                alt="Prasanna Packers and Movers service"
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 60vw"
-                className="object-cover"
-              />
+              {/* IMAGES */}
+              {HERO_IMAGES.map((image, index) => (
+                <div
+                  key={image.src}
+                  className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                    index === currentHeroImage
+                      ? "opacity-100"
+                      : "opacity-0"
+                  }`}
+                >
+                  <Image
+                    src={image.src}
+                    alt={image.alt}
+                    fill
+                    priority={index === 0}
+                    sizes="(max-width: 1024px) 100vw, 60vw"
+                    className="object-cover"
+                  />
+                </div>
+              ))}
 
               {/* IMAGE GRADIENT */}
               <div className="absolute inset-0 bg-linear-to-r from-white/20 via-transparent to-transparent" />
 
               {/* 24/7 BADGE */}
-              <div className="absolute right-5 top-5 flex h-28 w-28 flex-col items-center justify-center rounded-full border-4 border-white bg-[#0b2f67] text-center text-white shadow-2xl sm:h-32 sm:w-32">
+              <div className="absolute right-5 top-5 z-20 flex h-28 w-28 flex-col items-center justify-center rounded-full border-4 border-white bg-[#0b2f67] text-center text-white shadow-2xl sm:h-32 sm:w-32">
                 <span className="text-3xl font-black">
                   24/7
                 </span>
@@ -281,6 +358,48 @@ export default function HomePage() {
                 <span className="text-xs font-bold uppercase tracking-wider">
                   Support
                 </span>
+              </div>
+
+              {/* PREVIOUS BUTTON */}
+              <button
+                type="button"
+                aria-label="Previous hero image"
+                onClick={showPreviousImage}
+                className="absolute left-4 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0b2f67] shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-white"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+
+              {/* NEXT BUTTON */}
+              <button
+                type="button"
+                aria-label="Next hero image"
+                onClick={showNextImage}
+                className="absolute right-4 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0b2f67] shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-white"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+
+              {/* SLIDE INDICATORS */}
+              <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/20 px-3 py-2 backdrop-blur-sm">
+                {HERO_IMAGES.map((image, index) => (
+                  <button
+                    key={image.src}
+                    type="button"
+                    aria-label={`Show hero image ${index + 1}`}
+                    aria-current={
+                      index === currentHeroImage
+                    }
+                    onClick={() =>
+                      setCurrentHeroImage(index)
+                    }
+                    className={`h-2.5 rounded-full transition-all duration-300 ${
+                      index === currentHeroImage
+                        ? "w-8 bg-white"
+                        : "w-2.5 bg-white/60 hover:bg-white"
+                    }`}
+                  />
+                ))}
               </div>
             </div>
           </div>
